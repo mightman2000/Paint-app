@@ -122,6 +122,12 @@
             <constraints/>
             <properties/>
           </component>
+          <component id="63d3" class="javax.swing.JButton" binding="repaintButton" default-binding="true">
+            <constraints/>
+            <properties>
+              <text value="repaint"/>
+            </properties>
+          </component>
           <component id="535a2" class="javax.swing.JButton" binding="redrawPrimBTN">
             <constraints/>
             <properties>

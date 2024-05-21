@@ -75,6 +75,7 @@ public class MyFrame extends JFrame {
     private JButton redrawPrimBTN;
     private JButton colorButton;
     private JButton thicknessButton;
+    private JButton repaintButton;
 
     // Create dropdown button
     private JButton dropDownButton = new JButton("File");
@@ -162,8 +163,8 @@ public class MyFrame extends JFrame {
         //copy button
         copyButton.addActionListener(new CopyButtonAction());
 
-        //erase button
-        eraseButton.addActionListener(new EraseButtonAction());
+        //paste button
+        pasteButton.addActionListener(new PasteButtonAction());
 
         //drawing panel properties
         drawingPanel.setBorder(BorderFactory.createLineBorder(Color.black, 2));
@@ -171,6 +172,7 @@ public class MyFrame extends JFrame {
 
         //TEST TODO
         redrawPrimBTN.addActionListener(new RedrawTestAction());
+        repaintButton.addActionListener(new RepaintTestAction());
 
         //Component listener for redrawing the vectors whenever the app window is moved or minimised.
 
@@ -207,6 +209,14 @@ public class MyFrame extends JFrame {
         @Override
         public void actionPerformed(ActionEvent e) {
             redrawPrimitives();
+        }
+    }
+
+    class RepaintTestAction implements ActionListener{
+
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            drawingPanel.repaint();
         }
     }
 
@@ -355,7 +365,8 @@ public class MyFrame extends JFrame {
                     }
                 }
             }
-            drawingPanel.repaint(); // Repaint the drawing panel
+            // Repaint the drawing panel
+            //drawingPanel.repaint();
         }
     }
 
@@ -411,7 +422,7 @@ public class MyFrame extends JFrame {
                     }
                 }
             }
-            drawingPanel.repaint();
+            //drawingPanel.repaint();
         }
     }
 
@@ -504,18 +515,45 @@ public class MyFrame extends JFrame {
         }
     }
 
-    class CopyButtonAction implements ActionListener{
+    class CopyButtonAction implements ActionListener {
 
         @Override
         public void actionPerformed(ActionEvent e) {
-
+            // Store the selected primitives to be copied
+            selectedPrimitives.clear();
+            selectedPrimitives.addAll(getIntersectingPrimitives(new Rectangle(drawingPanel.getWidth(), drawingPanel.getHeight())));
         }
     }
-    class PasteButtonAction implements ActionListener{
+    class PasteButtonAction implements ActionListener {
 
         @Override
         public void actionPerformed(ActionEvent e) {
-
+            // Paste the copied primitives
+            System.out.println("Paste button clicked");
+            for (Object primitive : selectedPrimitives) {
+                if (primitive instanceof Line2D) {
+                    Line2D line = (Line2D) primitive;
+                    vectors.add(new Line2D.Double(line.getX1() + 50, line.getY1() + 50, line.getX2() + 50, line.getY2() + 50)); // Example: Offset the copied line
+                } else if (primitive instanceof MyRectangle) {
+                    MyRectangle rect = (MyRectangle) primitive;
+                    if (rect.isSquare()) {
+                        squares.add(new MyRectangle(rect.x + 50, rect.y + 50, rect.width, rect.height, true)); // Example: Offset the copied square
+                    } else {
+                        ellipses.add(new MyRectangle(rect.x + 50, rect.y + 50, rect.width, rect.height, false)); // Example: Offset the copied ellipse
+                    }
+                } else if (primitive instanceof Polygon) {
+                    Polygon poly = (Polygon) primitive;
+                    int[] xPoints = new int[poly.npoints];
+                    int[] yPoints = new int[poly.npoints];
+                    for (int i = 0; i < poly.npoints; i++) {
+                        xPoints[i] = poly.xpoints[i] + 50; // Example: Offset the copied polygon
+                        yPoints[i] = poly.ypoints[i] + 50;
+                    }
+                    triangles.add(new Polygon(xPoints, yPoints, poly.npoints));
+                }
+            }
+            //drawingPanel.repaint();
+            redrawPrimitives();
         }
     }
 
@@ -624,7 +662,7 @@ public class MyFrame extends JFrame {
             g2d.setStroke(new BasicStroke(currentThickness));
             g.drawRect(x, y, size, size);
 
-            Rectangle square = new Rectangle(x, y, size ,size);
+            Rectangle square = new MyRectangle(x, y, size, size, true);
 
             squares.add(square);
         }
@@ -694,7 +732,7 @@ public class MyFrame extends JFrame {
             g.drawOval(x, y, width, height);
 
             // Create the ellipse object (as a Rectangle representing its bounding box)
-            Rectangle ellipse = new Rectangle(x, y, width, height);
+            Rectangle ellipse = new MyRectangle(x, y, width, height, false);
 
             // Add the ellipse to the list
             ellipses.add(ellipse);
@@ -736,6 +774,7 @@ public class MyFrame extends JFrame {
     private void rotateSelectedPrimitives(List<Object> selectedPrimitives) {
         for (Object primitive : selectedPrimitives) {
             if (primitive instanceof Line2D) {
+                // Rotation for lines
                 Line2D line = (Line2D) primitive;
                 double centerX = (line.getX1() + line.getX2()) / 2;
                 double centerY = (line.getY1() + line.getY2()) / 2;
@@ -750,19 +789,36 @@ public class MyFrame extends JFrame {
                 if (index != -1) {
                     vectors.set(index, rotatedLine);
                 }
-            } else if (primitive instanceof Rectangle) {
-                Rectangle rect = (Rectangle) primitive;
-                int newWidth = rect.height;
-                int newHeight = rect.width;
-                int newX = rect.x + (rect.width - rect.height) / 2;
-                int newY = rect.y + (rect.height - rect.width) / 2;
+            } else if (primitive instanceof MyRectangle) {
+                MyRectangle rect = (MyRectangle) primitive;
+                if (rect.isSquare()) {
+                    // Rotation for squares
+                    int newWidth = rect.height;
+                    int newHeight = rect.width;
+                    int newX = rect.x + (rect.width - rect.height) / 2;
+                    int newY = rect.y + (rect.height - rect.width) / 2;
 
-                Rectangle rotatedRect = new Rectangle(newX, newY, newWidth, newHeight);
-                int index = squares.indexOf(rect);
-                if (index != -1) {
-                    squares.set(index, rotatedRect);
+                    Rectangle rotatedRect = new Rectangle(newX, newY, newWidth, newHeight);
+                    int index = squares.indexOf(rect);
+                    if (index != -1) {
+                        squares.set(index, rotatedRect);
+                    }
+                } else {
+                    // Rotation for ellipses
+                    int newWidth = rect.height;
+                    int newHeight = rect.width;
+                    int newX = rect.x + (rect.width - rect.height) / 2;
+                    int newY = rect.y + (rect.height - rect.width) / 2;
+
+                    Rectangle rotatedRect = new Rectangle(newX, newY, newWidth, newHeight);
+                    int index = ellipses.indexOf(rect);
+                    if (index != -1) {
+                        ellipses.set(index, rotatedRect);
+                    }
+
                 }
             } else if (primitive instanceof Polygon) {
+                // Rotation for polygons
                 Polygon poly = (Polygon) primitive;
                 int[] newXPts = new int[poly.npoints];
                 int[] newYPts = new int[poly.npoints];
@@ -786,19 +842,6 @@ public class MyFrame extends JFrame {
                 if (index != -1) {
                     triangles.set(index, rotatedPoly);
                 }
-            } else if (primitive instanceof Rectangle) {
-                // rotation for ellipses
-                Rectangle ellipse = (Rectangle) primitive;
-                int newWidth = ellipse.height;
-                int newHeight = ellipse.width;
-                int newX = ellipse.x + (ellipse.width - ellipse.height) / 2;
-                int newY = ellipse.y + (ellipse.height - ellipse.width) / 2;
-
-                Rectangle rotatedEllipse = new Rectangle(newX, newY, newWidth, newHeight);
-                int index = ellipses.indexOf(ellipse);
-                if (index != -1) {
-                    ellipses.set(index, rotatedEllipse);
-                }
             }
         }
     }
@@ -807,6 +850,7 @@ public class MyFrame extends JFrame {
         List<Object> selectedPrimitives = getIntersectingPrimitives(selectionRect);
         rotateSelectedPrimitives(selectedPrimitives);
         drawingPanel.repaint();
+        redrawPrimitives();
     }
 
     void eraseSelectedPrimitives(List selectedPrimitives) {
